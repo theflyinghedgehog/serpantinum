@@ -1,122 +1,72 @@
-<div align="center">
-  <a href="https://ko-fi.com/ilyamiro">
-    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="ko-fi" />
-  </a>
-</div>
+# Serpantinum (TheFlyingHedgehog's fork)
 
-<div align="center">
-  <img src="docs/assets/banner.png" alt="Serpantinum" width="850" />
-</div>
+My fork of [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum), the Quickshell desktop shell, as I run it on a ThinkPad T470 with Arch and Hyprland. It's based on upstream 2.5.1 (commit `73b1cb7`). For everything that isn't listed here, see the original project and [serpantinum.dev](https://serpantinum.dev).
 
-## Previews
+## What I changed
 
-| | |
-|---|---|
-| ![Preview 1](docs/assets/previews/preview_1.png) | ![Preview 2](docs/assets/previews/preview_2.png) |
-| ![Preview 3](docs/assets/previews/preview_3.png) | ![Preview 4](docs/assets/previews/preview_4.png) |
+### Hyprland (`compositors/hyprland`)
 
----
+- Super+W closes a window, Super+Space opens the launcher.
+- Clipboard, music, system, calendar, network, volume and settings panels are toggled over Quickshell IPC instead of the `serpantinum` script, which adds about 0.7s to every keypress.
+- Super+1-0 switch workspaces through Hyprland directly.
+- Monitor scale 1.25 for the T470 panel.
 
-> [!IMPORTANT]
-> **Hey, join our subreddit!** Share your setups, ask questions and follow updates at **[r/serpantinum](https://www.reddit.com/r/serpantinum)**.
->
-> [![Join r/serpantinum](https://img.shields.io/badge/Join-r%2Fserpantinum-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/serpantinum)
+### Bar
 
-## Installation
+- Autohide waits until the cursor has rested on the edge for `bar.revealDelay` ms (200 by default) before showing the bar, so it doesn't pop up when I go for browser tabs. In fill style the hidden bar no longer keeps a full-height hover zone.
+- Clicking bar modules opens their popups over IPC instead of `scripts/qs_manager.sh` (about 0.08s instead of 0.7s).
+- New brightness module: scroll changes brightness by 5%, click opens the system panel. Button and text styles, like volume.
+- The T470 has two batteries. The battery module still shows the total, and hovering it lists the internal and external battery separately.
 
-> [!TIP]
-> Full installation and configuration instructions live at **[serpantinum.dev](https://serpantinum.dev)**.
+### Launcher
 
-> [!IMPORTANT]
-> **Migrating from v1:** All previous configuration will be backed up and unused. Configuration of compositor settings such as monitors, keybinds, and autostart is now up to you, as the project migrated from being dotfiles to being a shell.
+Apps, files, emoji and calculator results are in one ranked list instead of tabs. `>` runs a command, `>>` runs it in a terminal that stays open, `?` searches the web. Tab and Shift+Tab move through the list.
 
-### Arch Linux, Fedora, Void Linux and their derivatives
+### Widgets
 
-For Arch-based distributions (including systemd, OpenRC, and other init systems), for Fedora-based distributions such as Nobara and Ultramarine, and for Void Linux (glibc and musl), run the automated installation script. It detects your distribution and uses `pacman`, `dnf` or `xbps`.
+- Arch updates: pending repo and AUR updates. Update everything, or tick the packages you want. Updates run in kitty.
+- Obsidian: search the vault, create a note, open bookmarks. Folders open inside the widget.
+- Google agenda: events for the next 7 days and open tasks. Click the circle to complete a task, + to add one. Uses a small standard-library Python helper (`gsync.py`). You need your own OAuth "Desktop app" client from Google Cloud saved as `~/.config/serpantinum/google/client_secret.json`.
+- Battery "Devices" style: laptop and Bluetooth device batteries as rings or a list, with one ring per battery on the T470.
+- Widget editor: content inside a widget no longer swallows clicks while editing, and the selected widget has a move handle you can press and drag.
 
-Use this installer:
+### Lock screen
 
-```bash
-curl -fsSL install.serpantinum.dev | bash
+The battery pill shows both batteries, internal first (`82% · 24%`).
+
+### SDDM login theme (`config/sddm/themes/serpantinum-lock`)
+
+A login screen that copies the lock screen: same layout, blur, colours and widgets, with live CPU, RAM, temperature, battery and weather. `install.sh` builds it from your current Serpantinum wallpaper, theme, font, avatar and lock layout.
+
+```sh
+cd config/sddm/themes/serpantinum-lock
+./install.sh --preview   # test window, installs nothing
+./install.sh             # install and set it as SDDM's theme
 ```
 
-If this doesn't work, use:
+Run it again after changing the wallpaper, theme or lock layout. It also sets `QML_XHR_ALLOW_FILE_READ=1` for the greeter in `/etc/sddm.conf.d/99-serpantinum.conf`, which the live stats need.
 
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/ilyamiro/serpantinum/master/install/install.sh)"
+## Installing
+
+Clone the fork and run the upstream installer from the checkout, so it uses these files:
+
+```sh
+git clone https://github.com/theflyinghedgehog/serpantinum
+cd serpantinum
+./install/install.sh
 ```
 
-> [!NOTE]
-> To update, run the script again and choose "update".
+The Hyprland config is in `compositors/hyprland`. Copy `hyprland.lua` and `config/` to `~/.config/hypr` if you want my keybinds.
 
----
+## Updating from upstream
 
-### NixOS
-
-See the [NixOS installation guide](https://serpantinum.dev/installation/nixos) for flake setup, the NixOS and Home Manager modules, and updating.
-
----
-
-## Audio engine
-
-The equalizer, balance, mono, channel swap, dynamic range modes and the dynamic EQ run on [serpantinum-audio](https://github.com/ilyamiro/serpantinum-audio), a small PipeWire processor that replaces EasyEffects. The installer and the packages install it, and on the first start after updating, Serpantinum hands your audio over from EasyEffects. See the [audio engine guide](https://serpantinum.dev/audio).
-
----
-
-## Blue light filter
-
-The blue light filter and its day and night schedule run on [serpantinum-gamma](https://github.com/ilyamiro/serpantinum-gamma), a small Wayland daemon that replaces wl-gammarelay-rs. The installer and the packages install it. Serpantinum starts it the first time a filter is turned on and stops it on exit.
-
----
-
-## Supported compositors
-
-Hyprland, Niri, Sway and Mango. The installer detects the running compositor and deploys its configuration. On Fedora, Mango is installed from the Terra repository. On Void Linux, Hyprland is installed from the third-party black-hole.dev repository.
-
----
-
-## Running
-
-To run the shell, launch `serpantinumd start`
-
-For configuration, see the [configuration guide](https://serpantinum.dev/configure).
-
-<br><br><br>
-
-<div align="center">
-  <h3>Thanks to all contributors</h3>
-  <br>
-
-  <a href="https://github.com/TheRinder2"><img src="https://avatars.githubusercontent.com/u/48689803?v=4&s=48" width="48" height="48" alt="TheRinder2"></a>
-  <a href="https://github.com/bizneskind-droid"><img src="https://avatars.githubusercontent.com/u/245046997?v=4&s=48" width="48" height="48" alt="bizneskind-droid"></a>
-  <a href="https://github.com/Pigeon78"><img src="https://avatars.githubusercontent.com/u/151051379?v=4&s=48" width="48" height="48" alt="Pigeon78"></a>
-  <a href="https://github.com/Eduarduar"><img src="https://avatars.githubusercontent.com/u/104547727?v=4&s=48" width="48" height="48" alt="Eduarduar"></a>
-  <a href="https://github.com/Spinty-dev"><img src="https://avatars.githubusercontent.com/u/123001216?v=4&s=48" width="48" height="48" alt="Spinty-dev"></a>
-  <a href="https://github.com/MrDexstor"><img src="https://avatars.githubusercontent.com/u/97257847?v=4&s=48" width="48" height="48" alt="MrDexstor"></a>
-  <a href="https://github.com/coloramamoe"><img src="https://avatars.githubusercontent.com/u/117035740?v=4&s=48" width="48" height="48" alt="coloramamoe"></a>
-  <a href="https://github.com/Zyxilon"><img src="https://avatars.githubusercontent.com/u/234867627?v=4&s=48" width="48" height="48" alt="Zyxilon"></a>
-  <a href="https://github.com/gouthamkrishnap"><img src="https://avatars.githubusercontent.com/u/224089015?v=4&s=48" width="48" height="48" alt="gouthamkrishnap"></a>
-  <a href="https://github.com/Stoltembergg"><img src="https://avatars.githubusercontent.com/u/312632452?v=4&s=48" width="48" height="48" alt="Stoltembergg"></a>
-  <a href="https://github.com/andckadir"><img src="https://avatars.githubusercontent.com/u/175446585?v=4&s=48" width="48" height="48" alt="andckadir"></a>
-  <a href="https://github.com/ArseniiTkachuk"><img src="https://avatars.githubusercontent.com/u/257102547?v=4&s=48" width="48" height="48" alt="ArseniiTkachuk"></a>
-  <a href="https://github.com/MCUxDaredevil"><img src="https://avatars.githubusercontent.com/u/59441946?v=4&s=48" width="48" height="48" alt="MCUxDaredevil"></a>
-  <a href="https://github.com/MILKv2"><img src="https://avatars.githubusercontent.com/u/142674287?v=4&s=48" width="48" height="48" alt="MILKv2"></a>
-  <a href="https://github.com/pedrolourencosilva"><img src="https://avatars.githubusercontent.com/u/184855780?v=4&s=48" width="48" height="48" alt="pedrolourencosilva"></a>
-  <a href="https://github.com/Vaspyyy"><img src="https://avatars.githubusercontent.com/u/197029450?v=4&s=48" width="48" height="48" alt="Vaspyyy"></a>
-  <a href="https://github.com/Sergi122"><img src="https://avatars.githubusercontent.com/u/171693999?v=4&s=48" width="48" height="48" alt="Sergi122"></a>
-  <a href="https://github.com/Syrup5845"><img src="https://avatars.githubusercontent.com/u/310795939?v=4&s=48" width="48" height="48" alt="Syrup5845"></a>
-  <a href="https://github.com/forteleaf"><img src="https://avatars.githubusercontent.com/u/14119264?v=4&s=48" width="48" height="48" alt="forteleaf"></a>
-  <a href="https://github.com/kranks-uga"><img src="https://avatars.githubusercontent.com/u/179175113?v=4&s=48" width="48" height="48" alt="kranks-uga"></a>
-  <a href="https://github.com/zynx-real"><img src="https://avatars.githubusercontent.com/u/320626542?v=4&s=48" width="48" height="48" alt="zynx-real"></a>
-</div>
-
-<br><br>
-
----
+```sh
+git remote add upstream https://github.com/ilyamiro/serpantinum
+git fetch upstream --tags
+git rebase upstream/master
+git push --force-with-lease
+```
 
 ## License
 
-Copyright (C) 2026 Illia Miroshnichenko
-
-This project is licensed under the GNU Affero General Public License version 3, or (at your option) any later version. See the [LICENSE.md](LICENSE.md) file for the full license text.
-
+AGPL-3.0, same as upstream (see `LICENSE.md`). The shell itself is ilyamiro's work.
