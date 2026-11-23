@@ -12,6 +12,7 @@ QtObject {
         if (s === "timedate" || s === "time" || s === "clock") return "timedate";
         if (s === "info" || s === "indicator" || s === "indicators" || s === "record") return "info";
         if (s === "volume" || s === "vol") return "vol";
+        if (s === "brightness" || s === "bri") return "bri";
         if (s === "battery" || s === "bat") return "bat";
         if (s === "visualizer" || s === "viswidget" || s === "vis") return "vis";
         if (s === "top" || s === "left") return "left";
@@ -229,6 +230,17 @@ QtObject {
                 }
             }
         },
+        // brightness module
+        "bri": {
+            name: "Brightness",
+            icon: "󰃠",
+            defaultVariant: "button",
+            face: "faces/bri/BriFace.qml",
+            variants: {
+                "button": { id: "button", name: "Button", desc: "Interactive button pill with background", icon: "󰃠", face: "faces/bri/BriFace.qml" },
+                "text":   { id: "text",   name: "Text",   desc: "Clean text and icon without background", icon: "󰃠", face: "faces/bri/BriFace.qml" }
+            }
+        },
         "bat": {
             name: typeof I18n !== "undefined" ? I18n.t("guide.bar.modules.battery", "Battery") : "Battery",
             icon: "󰁹",
@@ -293,6 +305,10 @@ QtObject {
         }
         if (norm === "vol") {
             if (bs.volStyle) return bs.volStyle;
+            return "button";
+        }
+        if (norm === "bri") {
+            if (bs.briStyle) return bs.briStyle;
             return "button";
         }
         if (norm === "kb") {
