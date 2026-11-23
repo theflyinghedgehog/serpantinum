@@ -12,3 +12,15 @@ __pycache__/
 bin/serpantinum-audio
 
 .backup/
+
+# local notes and assistant files
+handoff*.md
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.claude/
+.gemini/
+.cursor/
+.copilot/
+*.bak
+*.v[0-9]
