@@ -967,9 +967,47 @@ QtObject {
             defaultVariant: "default",
             variants: {
                 "default": { file: "faces/battery/BatteryFace.qml", icon: "1", label: I18n.t("widgets.variants.default") },
-                "circle":  { file: "faces/battery/BatteryFaceCircle.qml", icon: "2", label: I18n.t("widgets.variants.circle", "Circle") }
+                "circle":  { file: "faces/battery/BatteryFaceCircle.qml", icon: "2", label: I18n.t("widgets.variants.circle", "Circle") },
+                // laptop + Bluetooth devices
+                "devices": { file: "faces/battery/BatteryFaceDevices.qml", icon: "3", label: "Devices" }
             },
             additionalSettings: registry.usageCircleSettings
+        },
+        // Arch updates widget
+        "updates": {
+            name: "Arch updates",
+            icon: String.fromCodePoint(0xF06B0),
+            category: "system",
+            defaultWidth: 240,
+            defaultHeight: 90,
+            defaultVariant: "default",
+            variants: {
+                "default": { file: "faces/updates/UpdatesFace.qml", icon: "1", label: "Default" }
+            }
+        },
+        // Obsidian widget
+        "obsidian": {
+            name: "Obsidian",
+            icon: String.fromCodePoint(0xF082E),
+            category: "info",
+            defaultWidth: 320,
+            defaultHeight: 400,
+            defaultVariant: "default",
+            variants: {
+                "default": { file: "faces/obsidian/ObsidianFace.qml", icon: "1", label: "Default" }
+            }
+        },
+        // Google Calendar + Tasks agenda
+        "google": {
+            name: "Google Agenda",
+            icon: String.fromCodePoint(0xF02AD),
+            category: "info",
+            defaultWidth: 340,
+            defaultHeight: 440,
+            defaultVariant: "default",
+            variants: {
+                "default": { file: "faces/google/GoogleFace.qml", icon: "1", label: "Default" }
+            }
         },
         "github": {
             name: typeof I18n !== "undefined" ? I18n.t("widgets.types.github", "GitHub") : "GitHub",

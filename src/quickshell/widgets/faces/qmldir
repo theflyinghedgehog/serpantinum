@@ -25,3 +25,6 @@ VisualizerFaceContinuous 1.0 visualizer/VisualizerFaceContinuous.qml
 WeatherFaceCompact 1.0 weather/WeatherFaceCompact.qml
 WeatherFaceFull 1.0 weather/WeatherFaceFull.qml
 WeatherFaceRound 1.0 weather/WeatherFaceRound.qml
+UpdatesFace 1.0 updates/UpdatesFace.qml
+ObsidianFace 1.0 obsidian/ObsidianFace.qml
+GoogleFace 1.0 google/GoogleFace.qml
