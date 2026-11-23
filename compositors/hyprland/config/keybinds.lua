@@ -1,6 +1,14 @@
 local mainMod = _G.mainMod or "SUPER"
 local terminal = _G.terminal or "kitty"
 
+-- Call the shell over Quickshell IPC directly. Going through the `serpantinum`
+-- script adds ~0.7s to every keypress.
+local SERP_QS = "quickshell -p $HOME/.local/share/serpantinum/src/quickshell/Shell.qml ipc call main handleCommand "
+
+local function serp(cmd, target)
+	return hl.dsp.exec_cmd(SERP_QS .. cmd .. " " .. target .. ' ""')
+end
+
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
@@ -20,7 +28,7 @@ hl.bind(mainMod .. " + Right", hl.dsp.focus({ direction = "right" }))
 hl.bind(mainMod .. " + Up", hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + Down", hl.dsp.focus({ direction = "down" }))
 
-hl.bind(mainMod .. " + Q", hl.dsp.window.close())
+hl.bind(mainMod .. " + W", hl.dsp.window.close())
 hl.bind(mainMod .. " + ALT + F", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }))
 
@@ -35,7 +43,6 @@ hl.bind("SUPER + SHIFT + Print", hl.dsp.exec_cmd("serpantinum screenshot --full 
 hl.bind("XF86PowerOff", hl.dsp.exec_cmd("serpantinum lock"), { locked = true })
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("serpantinum lock"), { repeating = true, locked = true })
 
-hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
@@ -50,20 +57,17 @@ hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("ski"))
 hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(terminal))
 
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("serpantinum reload"))
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("serpantinum msg toggle clipboard"))
-hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("serpantinum msg toggle launcher"))
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("serpantinum msg toggle music"))
-hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("serpantinum msg toggle system"))
-hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("serpantinum msg toggle wallpaper"))
-hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("serpantinum msg toggle calendar"))
-hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("serpantinum msg toggle network"))
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("serpantinum msg toggle volume"))
-hl.bind(mainMod .. " + H", hl.dsp.exec_cmd("serpantinum msg toggle settings"))
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("serpantinum msg bar autohide"))
+hl.bind(mainMod .. " + C", serp("toggle", "clipboard"))
+hl.bind(mainMod .. " + SPACE", serp("toggle", "launcher"))
+hl.bind(mainMod .. " + M", serp("toggle", "music"))
+hl.bind(mainMod .. " + B", serp("toggle", "system"))
+hl.bind(mainMod .. " + S", serp("toggle", "calendar"))
+hl.bind(mainMod .. " + N", serp("toggle", "network"))
+hl.bind(mainMod .. " + V", serp("toggle", "volume"))
+hl.bind(mainMod .. " + H", serp("toggle", "settings"))
+hl.bind(mainMod .. " + A", serp("bar", "autohide"))
 
 for i = 1, 10 do
-  local ws = tostring(i)
-  local key = tostring(i % 10)
-  hl.bind(mainMod .. " + " .. key, hl.dsp.exec_cmd("serpantinum msg workspace " .. ws))
-  hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.exec_cmd("serpantinum msg workspace " .. ws .. " move"))
+	hl.bind(mainMod .. " + " .. (i % 10), hl.dsp.focus({ workspace = i }))
+	hl.bind(mainMod .. " + SHIFT + " .. (i % 10), hl.dsp.window.move({ workspace = i }))
 end
