@@ -127,11 +127,35 @@ Variants {
                 interval: barWindowRoot.autohideTimeout
             }
 
+            // Reveal delay: the cursor must rest on the top edge for
+            // bar.revealDelay ms (default 200) before the bar appears, so brushing
+            // past it on the way to browser tabs doesn't open it.
+            property int revealDelay: {
+                let dummy = configRevision;
+                return (typeof Config !== "undefined" && Config.rawSettings && Config.rawSettings.bar && Config.rawSettings.bar.revealDelay !== undefined) ? Config.rawSettings.bar.revealDelay : 200;
+            }
+            property bool hoverArmed: false
+
+            Timer {
+                id: revealTimer
+                interval: barWindowRoot.revealDelay
+                onTriggered: if (barHover.hovered) barWindowRoot.hoverArmed = true
+            }
+
             function checkHideTimer() {
-                if (!barHover.hovered && barWindowRoot.autohide) {
-                    hideTimer.restart();
+                if (barHover.hovered) {
+                    if (hideTimer.running) {
+                        // came back while the bar was still visible: keep it shown
+                        hideTimer.stop();
+                        barWindowRoot.hoverArmed = true;
+                    } else if (!barWindowRoot.hoverArmed) {
+                        revealTimer.restart();
+                    }
                 } else {
-                    hideTimer.stop();
+                    revealTimer.stop();
+                    // only run the hide grace period if the bar was actually shown
+                    if (barWindowRoot.hoverArmed && barWindowRoot.autohide) hideTimer.restart();
+                    barWindowRoot.hoverArmed = false;
                 }
             }
 
@@ -143,7 +167,7 @@ Variants {
             property bool isRevealed: {
                 if (shouldHideForRedact) return false;
                 if (!autohide) return true;
-                if (barHover.hovered) return true;
+                if (hoverArmed) return true;
                 if (hideTimer.running) return true;
                 return false;
             }
@@ -285,27 +309,29 @@ Variants {
             exclusiveZone: (!barConfigReady || autohide || shouldHideForRedact) ? 0 : barHeight
             color: "transparent"
 
-            property real activeMaskHeight: shouldHideForRedact ? 0 : ((autohide && !isRevealed) ? s(4) : (isVertical ? (isFill ? barWindowRoot.height : (effectiveBarHeight + edgePadding * 2)) : (isFill ? (barHeight + cornerRadius) : (barHeight + edgePadding))))
-            property real activeMaskWidth: shouldHideForRedact ? 0 : ((autohide && !isRevealed) ? s(4) : (isVertical ? (isFill ? (barHeight + cornerRadius) : (barHeight + edgePadding)) : (isFill ? barWindowRoot.width : (effectiveBarWidth + edgePadding * 2))))
+            property real activeMaskHeight: shouldHideForRedact ? 0 : ((autohide && !isRevealed) ? 1 : (isVertical ? (isFill ? barWindowRoot.height : (effectiveBarHeight + edgePadding * 2)) : (isFill ? (barHeight + cornerRadius) : (barHeight + edgePadding))))
+            property real activeMaskWidth: shouldHideForRedact ? 0 : ((autohide && !isRevealed) ? 1 : (isVertical ? (isFill ? (barHeight + cornerRadius) : (barHeight + edgePadding)) : (isFill ? barWindowRoot.width : (effectiveBarWidth + edgePadding * 2))))
 
             mask: Region {
                 Region {
                     x: barWindowRoot.isVertical ? (barWindowRoot.barPosition === "right" ? (barWindowRoot.width - barWindowRoot.activeMaskWidth) : 0) : barWindowRoot.currentBarMinX
                     y: barWindowRoot.isVertical ? barWindowRoot.currentBarMinY : (barWindowRoot.barPosition === "bottom" ? barWindowRoot.baseOffsetY : 0)
                     width: barWindowRoot.isVertical ? barWindowRoot.activeMaskWidth : (barWindowRoot.currentBarMaxX - barWindowRoot.currentBarMinX)
-                    height: barWindowRoot.isVertical ? (barWindowRoot.currentBarMaxY - barWindowRoot.currentBarMinY) : (isFill ? barWindowRoot.barHeight : barWindowRoot.activeMaskHeight)
+                    // in "fill" style the hidden bar used to keep a full-height (40px)
+                    // invisible hover zone; now it shrinks to the 1px strip like other styles
+                    height: barWindowRoot.isVertical ? (barWindowRoot.currentBarMaxY - barWindowRoot.currentBarMinY) : ((isFill && barWindowRoot.isRevealed) ? barWindowRoot.barHeight : barWindowRoot.activeMaskHeight)
                 }
                 Region {
                     x: barWindowRoot.isVertical ? (barWindowRoot.barPosition === "right" ? (barWindowRoot.width - barWindowRoot.barHeight - barWindowRoot.cornerRadius) : barWindowRoot.barHeight) : 0
                     y: barWindowRoot.isVertical ? 0 : (barWindowRoot.barPosition === "bottom" ? (barWindowRoot.baseOffsetY - barWindowRoot.cornerRadius) : (barWindowRoot.baseOffsetY + barWindowRoot.barHeight))
-                    width: (barWindowRoot.isFill && !barWindowRoot.fillAttached) ? barWindowRoot.cornerRadius : 0
-                    height: (barWindowRoot.isFill && !barWindowRoot.fillAttached) ? barWindowRoot.cornerRadius : 0
+                    width: (barWindowRoot.isFill && !barWindowRoot.fillAttached && barWindowRoot.isRevealed) ? barWindowRoot.cornerRadius : 0
+                    height: (barWindowRoot.isFill && !barWindowRoot.fillAttached && barWindowRoot.isRevealed) ? barWindowRoot.cornerRadius : 0
                 }
                 Region {
                     x: barWindowRoot.isVertical ? (barWindowRoot.barPosition === "right" ? (barWindowRoot.width - barWindowRoot.barHeight - barWindowRoot.cornerRadius) : barWindowRoot.barHeight) : (barWindowRoot.width - barWindowRoot.cornerRadius)
                     y: barWindowRoot.isVertical ? (barWindowRoot.height - barWindowRoot.cornerRadius) : (barWindowRoot.barPosition === "bottom" ? (barWindowRoot.baseOffsetY - barWindowRoot.cornerRadius) : (barWindowRoot.baseOffsetY + barWindowRoot.barHeight))
-                    width: (barWindowRoot.isFill && !barWindowRoot.fillAttached) ? barWindowRoot.cornerRadius : 0
-                    height: (barWindowRoot.isFill && !barWindowRoot.fillAttached) ? barWindowRoot.cornerRadius : 0
+                    width: (barWindowRoot.isFill && !barWindowRoot.fillAttached && barWindowRoot.isRevealed) ? barWindowRoot.cornerRadius : 0
+                    height: (barWindowRoot.isFill && !barWindowRoot.fillAttached && barWindowRoot.isRevealed) ? barWindowRoot.cornerRadius : 0
                 }
             }
 
