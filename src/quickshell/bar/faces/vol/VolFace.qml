@@ -116,7 +116,7 @@ BarFaceBase {
             if (mouse.button === Qt.RightButton) {
                 if (Audio.defaultSink) Audio.toggleMute(Audio.defaultSink)
             } else {
-                Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle volume"])
+                Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "volume", ""])
             }
         }
 
@@ -218,7 +218,7 @@ BarFaceBase {
             transform: Translate { y: volPill.initAnimTrigger ? 0 : s(15); Behavior on y { NumberAnimation { duration: 620; easing.type: Easing.OutQuint } } }
             Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
-            onClicked: if (!root.isPreview) Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle volume"])
+            onClicked: if (!root.isPreview) Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "volume", ""])
             onRightClicked: if (!root.isPreview && Audio.defaultSink) Audio.toggleMute(Audio.defaultSink)
 
             property real wheelAccumulator: 0
@@ -256,7 +256,7 @@ BarFaceBase {
             iconFontSize: s(root.isCompact ? 14 : 15)
             accentColor: root.isSoundActive ? (root.isCompact ? Qt.lighter(ThemeBackend.mauve, 1.08) : ThemeBackend.mauve) : (root.isCompact ? Qt.lighter(ThemeBackend.surface1, 1.12) : ThemeBackend.surface1)
             textColor: root.isSoundActive ? ThemeBackend.base : (root.isCompact ? ThemeBackend.text : ThemeBackend.subtext0)
-            onClicked: if (!root.isPreview) Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle volume"])
+            onClicked: if (!root.isPreview) Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "volume", ""])
         }
     }
 }

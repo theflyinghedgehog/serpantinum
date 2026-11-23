@@ -58,7 +58,7 @@ Item {
             textColor: isHoveredOrHighlighted ? ThemeBackend.text : (root.isCompact ? ThemeBackend.subtext0 : ThemeBackend.overlay2)
             onClicked: {
                 if (Caching.serpantinumDir) {
-                    Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle applauncher"])
+                    Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "applauncher", ""])
                 }
             }
         }
@@ -122,7 +122,7 @@ Item {
         z: -1
         onClicked: {
             if (Caching.serpantinumDir) {
-                Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle applauncher"])
+                Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "applauncher", ""])
             }
         }
     }

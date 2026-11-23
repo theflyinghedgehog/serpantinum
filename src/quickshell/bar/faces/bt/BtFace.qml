@@ -219,7 +219,7 @@ BarFaceBase {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         enabled: root.btStyle === "text" && !root.isPreview
-        onClicked: Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle network bt"])
+        onClicked: Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf %s "$2" > "$1/mode"; exec quickshell -p "$3" ipc call main handleCommand toggle network "$2"', "sh", Caching.getCacheDir("network"), "bt", Caching.serpantinumDir + "/quickshell/Shell.qml"])
     }
 
     AxisFlow {
@@ -297,7 +297,7 @@ BarFaceBase {
             transform: Translate { y: btPill.initAnimTrigger ? 0 : s(15); Behavior on y { NumberAnimation { duration: 620; easing.type: Easing.OutQuint } } }
             Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
-            onClicked: if (!root.isPreview) Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle network bt"])
+            onClicked: if (!root.isPreview) Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf %s "$2" > "$1/mode"; exec quickshell -p "$3" ipc call main handleCommand toggle network "$2"', "sh", Caching.getCacheDir("network"), "bt", Caching.serpantinumDir + "/quickshell/Shell.qml"])
         }
     }
 
@@ -315,7 +315,7 @@ BarFaceBase {
             textFontSize: s(root.isCompact ? 9 : 10)
             accentColor: root.isBtOn ? (root.isCompact ? Qt.lighter(ThemeBackend.mauve, 1.08) : ThemeBackend.mauve) : (root.isCompact ? Qt.lighter(ThemeBackend.surface0, 1.18) : ThemeBackend.surface0)
             textColor: root.isBtOn ? ThemeBackend.base : (root.isCompact ? Qt.lighter(ThemeBackend.text, 1.05) : ThemeBackend.text)
-            onClicked: if (!root.isPreview) Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle network bt"])
+            onClicked: if (!root.isPreview) Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && printf %s "$2" > "$1/mode"; exec quickshell -p "$3" ipc call main handleCommand toggle network "$2"', "sh", Caching.getCacheDir("network"), "bt", Caching.serpantinumDir + "/quickshell/Shell.qml"])
         }
     }
 }

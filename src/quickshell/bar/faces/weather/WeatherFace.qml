@@ -44,7 +44,7 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             if (Caching.serpantinumDir) {
-                Quickshell.execDetached(["bash", Caching.serpantinumDir + "/scripts/qs_manager.sh", "toggle", "calendar"]);
+                Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "calendar", ""]);
             }
         }
     }
