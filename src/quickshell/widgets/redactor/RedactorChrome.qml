@@ -60,7 +60,7 @@ ColumnLayout {
     property int posMode: 0
 
     onCalculatedPosModeChanged: {
-        if (!dragging) {
+        if (!dragging && !moveMa.pressed) { // keep the bar still while using the move handle
             posMode = calculatedPosMode;
         }
     }
@@ -104,6 +104,69 @@ ColumnLayout {
     RowLayout {
         spacing: s(4)
         Layout.alignment: Qt.AlignHCenter
+
+        // move handle: press and hold, then drag the widget anywhere
+        Rectangle {
+            id: moveHandle
+            implicitWidth: s(34)
+            implicitHeight: s(34)
+            radius: ThemeBackend.borderRadius
+            color: moveMa.pressed ? ThemeBackend.mauve
+                : (moveMa.containsMouse ? ThemeBackend.surface1 : ThemeBackend.surface0)
+            Behavior on color { ColorAnimation { duration: 120 } }
+
+            Text {
+                anchors.centerIn: parent
+                font.family: ThemeBackend.iconFont
+                font.pixelSize: s(18)
+                color: moveMa.pressed ? ThemeBackend.crust : ThemeBackend.mauve
+                text: String.fromCodePoint(0xF01BE)   // cursor-move (4 arrows)
+            }
+
+            MouseArea {
+                id: moveMa
+                anchors.fill: parent
+                hoverEnabled: true
+                preventStealing: true
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.SizeAllCursor
+
+                property real startDragX
+                property real startDragY
+                property real startWidgetX
+                property real startWidgetY
+
+                onPressed: (mouse) => {
+                    redactorMode.selectedId = widgetProxy.wId;
+                    widgetProxy.bringToFront();
+                    let p = mapToItem(redactorMode.workspaceArea, mouse.x, mouse.y);
+                    startDragX = p.x;
+                    startDragY = p.y;
+                    startWidgetX = widgetProxy.x;
+                    startWidgetY = widgetProxy.y;
+                }
+
+                onPositionChanged: (mouse) => {
+                    if (!pressed) return;
+                    let p = mapToItem(redactorMode.workspaceArea, mouse.x, mouse.y);
+                    let rawX = startWidgetX + (p.x - startDragX);
+                    let rawY = startWidgetY + (p.y - startDragY);
+                    let snapInfo = redactorMode.geometry.calculateSnap(widgetProxy, rawX, rawY, (mouse.modifiers & Qt.ControlModifier) !== 0);
+                    widgetProxy.model.wX = snapInfo.x;
+                    widgetProxy.model.wY = snapInfo.y;
+                    redactorMode.geometry.presentOverlay(widgetProxy, snapInfo.box, snapInfo);
+                    widgetProxy.triggerSync();
+                }
+
+                onReleased: {
+                    widgetProxy.finalizeSync();
+                    bottomChrome.posMode = bottomChrome.calculatedPosMode;
+                }
+                onCanceled: {
+                    widgetProxy.finalizeSync();
+                    bottomChrome.posMode = bottomChrome.calculatedPosMode;
+                }
+            }
+        }
 
         Rectangle {
             id: pxReadoutPill

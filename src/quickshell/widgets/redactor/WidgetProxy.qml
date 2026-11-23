@@ -430,6 +430,7 @@ Item {
 
         Loader {
             id: preview
+            enabled: false // widget content is not clickable while editing; clicks go to select/drag
             property string wImagePath: widgetProxy.wImagePath
             property string imagePath: widgetProxy.wImagePath
             property string path: widgetProxy.wImagePath
