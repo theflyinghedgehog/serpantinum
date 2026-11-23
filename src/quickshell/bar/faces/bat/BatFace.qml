@@ -130,6 +130,136 @@ BarFaceBase {
         return ThemeBackend.subtext0;
     }
 
+    // T470 dual battery: per-battery values (BAT0 internal, BAT1 external)
+    property var laptopBats: []
+    readonly property bool hasSplit: !isPreview && !isDesktop && laptopBats.length > 1
+    readonly property string splitText: laptopBats.map(b => b.pct + "%").join(" · ")
+    function refreshBats() {
+        let out = [];
+        try {
+            let vals = UPower.devices.values !== undefined ? UPower.devices.values : UPower.devices;
+            let n = vals.length !== undefined ? vals.length : 0;
+            for (let i = 0; i < n; i++) {
+                let d = vals[i];
+                if (!d || !d.isLaptopBattery) continue;
+                out.push({
+                    path: String(d.nativePath || ""),
+                    pct: Math.round(d.percentage * 100),
+                    charging: d.state === UPowerDeviceState.Charging,
+                    full: d.state === UPowerDeviceState.FullyCharged
+                });
+            }
+        } catch (e) {}
+        out.sort((a, b) => a.path.localeCompare(b.path));
+        for (let i = 0; i < out.length; i++)
+            out[i].name = out.length === 2 ? (i === 0 ? "Internal" : "External") : ("Battery " + (i + 1)), out[i].num = i + 1;
+        laptopBats = out;
+    }
+    Timer {
+        interval: 5000
+        repeat: true
+        triggeredOnStart: true
+        running: !root.isPreview && !root.isDesktop && (root.visible || root.lockLook)
+        onTriggered: root.refreshBats()
+    }
+    Connections {
+        target: UPower.displayDevice
+        function onPercentageChanged() { root.refreshBats(); }
+        function onStateChanged() { root.refreshBats(); }
+    }
+
+    TextMetrics { id: tmSplit; font.family: ThemeBackend.fontFamily; font.pixelSize: s(12); text: root.splitText }
+    TextMetrics { id: tmTotal; font.family: ThemeBackend.fontFamily; font.pixelSize: s(12); text: root.batPercent }
+    readonly property real splitExtra: (lockLook && hasSplit) ? Math.max(0, tmSplit.advanceWidth - tmTotal.advanceWidth) : 0
+
+    // Hover popup with the split (bar only, not the lock screen pill)
+    HoverHandler { id: batHover; enabled: root.hasSplit && !root.lockLook }
+    Timer { id: tipDelay; interval: 350; onTriggered: root.tipOpen = true }
+    property bool tipOpen: false
+    Connections {
+        target: batHover
+        function onHoveredChanged() {
+            if (batHover.hovered) tipDelay.restart();
+            else { tipDelay.stop(); root.tipOpen = false; }
+        }
+    }
+    PopupWindow {
+        id: batTip
+        visible: root.tipOpen && root.hasSplit && !root.lockLook && root.visible
+        color: "transparent"
+        anchor.item: root
+        anchor.rect.x: 0
+        anchor.rect.y: 0
+        anchor.rect.width: root.width + (root.isVertical ? Scaler.s(8) : 0)
+        anchor.rect.height: root.height + (root.isVertical ? 0 : Scaler.s(8))
+        anchor.edges: root.isVertical ? Edges.Right : Edges.Bottom
+        anchor.gravity: root.isVertical ? Edges.Right : Edges.Bottom
+        anchor.adjustment: PopupAdjustment.Flip | PopupAdjustment.Slide
+        implicitWidth: tipCard.width
+        implicitHeight: tipCard.height
+
+        Rectangle {
+            id: tipCard
+            width: tipCol.implicitWidth + Scaler.s(24)
+            height: tipCol.implicitHeight + Scaler.s(20)
+            color: ThemeBackend.base
+            radius: ThemeBackend.borderRadius
+            border.width: 1
+            border.color: Qt.alpha(ThemeBackend.surface2, 0.6)
+
+            Column {
+                id: tipCol
+                anchors.centerIn: parent
+                spacing: Scaler.s(6)
+                Repeater {
+                    model: root.laptopBats
+                    delegate: Row {
+                        required property var modelData
+                        spacing: Scaler.s(8)
+                        readonly property color c: modelData.charging ? ThemeBackend.green
+                            : (modelData.pct <= 15 ? ThemeBackend.red : (modelData.pct <= 25 ? ThemeBackend.peach : ThemeBackend.text))
+                        Item {   // battery outline with 1 / 2 inside
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Scaler.s(22); height: width
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰂎"
+                                font.family: ThemeBackend.iconFont
+                                font.pixelSize: parent.width
+                                color: parent.parent.c
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                anchors.verticalCenterOffset: parent.width * 0.07
+                                text: modelData.num
+                                font.family: ThemeBackend.fontFamily
+                                font.bold: true
+                                font.pixelSize: parent.width * 0.42
+                                color: parent.parent.c
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Scaler.s(70)
+                            text: modelData.name
+                            font.family: ThemeBackend.fontFamily
+                            font.pixelSize: Scaler.s(12)
+                            color: ThemeBackend.subtext0
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.pct + "%"
+                            font.family: ThemeBackend.fontFamily
+                            font.pixelSize: Scaler.s(12)
+                            font.bold: true
+                            color: parent.c
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     property bool showLayout: (!barWindow || isPreview) ? true : false
     readonly property var batPill: pillLoader.item ? pillLoader.item.pill : null
     readonly property bool lockLook: activeTarget ? activeTarget.lockLook === true : false
@@ -190,7 +320,7 @@ BarFaceBase {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         enabled: root.batStyle === "text" && !root.isPreview
-        onClicked: Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle system"])
+        onClicked: Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "system", ""])
     }
 
     AxisFlow {
@@ -257,11 +387,11 @@ BarFaceBase {
                 horizontalPadding: s(root.isCompact ? 10 : 12)
                 buttonIcon: root.effectiveShowIcon ? root.batIcon : ""
                 iconFontSize: s(root.isCompact ? 14 : 15)
-                buttonText: (!root.isVertical && root.effectiveShowPercent) ? root.batPercent : ""
+                buttonText: (!root.isVertical && root.effectiveShowPercent) ? ((root.lockLook && root.hasSplit) ? root.splitText : root.batPercent) : ""  // lock screen shows both batteries
                 textFontSize: s(root.isCompact ? 11 : 12)
                 accentColor: Qt.lighter(ThemeBackend.surface0, root.isCompact && !root.lockLook ? 1.18 : 1.28)
                 textColor: root.lockLook ? root.lockBatColor : root.batDynamicColor
-                onClicked: if (!root.isPreview) Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle system"])
+                onClicked: if (!root.isPreview) Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "system", ""])
             }
         }
     }
@@ -436,7 +566,7 @@ BarFaceBase {
                     hoverEnabled: true
                     enabled: !root.isPreview
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle system"])
+                    onClicked: Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "system", ""])
                 }
             }
 
@@ -599,7 +729,7 @@ BarFaceBase {
                     hoverEnabled: true
                     enabled: !root.isPreview
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Quickshell.execDetached(["bash", "-c", Caching.serpantinumDir + "/scripts/qs_manager.sh toggle system"])
+                    onClicked: Quickshell.execDetached(["quickshell", "-p", Caching.serpantinumDir + "/quickshell/Shell.qml", "ipc", "call", "main", "handleCommand", "toggle", "system", ""])
                 }
             }
         }

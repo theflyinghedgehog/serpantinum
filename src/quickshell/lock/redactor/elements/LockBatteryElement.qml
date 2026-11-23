@@ -8,7 +8,8 @@ Item {
     property var ctx: null
 
     visible: !el.ctx || !el.ctx.root.isDesktop
-    implicitWidth: faceLoader.item ? faceLoader.item.implicitWidth : 0
+    // dual battery: the wider split pill grows to the right so it does not cover the keyboard pill
+    implicitWidth: faceLoader.item ? faceLoader.item.implicitWidth - (faceLoader.item.splitExtra || 0) : 0
     implicitHeight: faceLoader.item ? faceLoader.item.implicitHeight : 0
 
     QtObject {
@@ -28,7 +29,8 @@ Item {
 
     Loader {
         id: faceLoader
-        anchors.centerIn: parent
+        x: 0
+        anchors.verticalCenter: parent.verticalCenter
         source: Qt.resolvedUrl("../../../bar/faces/bat/BatFace.qml")
         onLoaded: item.module = host
     }
