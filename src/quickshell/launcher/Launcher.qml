@@ -81,7 +81,8 @@ PanelWindow {
                 let val = text().trim();
                 if (val !== "") {
                     let idx = parseInt(val);
-                    if (!isNaN(idx) && (idx >= 0 && idx <= 2)) {
+                    // unified launcher: always stay on the single list, ignore saved tab
+                    if (false && !isNaN(idx) && (idx >= 0 && idx <= 2)) {
                         launcherWindow.currentTabIndex = idx;
                         tabSwitch.currentIndex = idx;
                     }
@@ -327,7 +328,7 @@ PanelWindow {
     property real collapsedCenterHeight: s(110)
 
     property real targetLauncherHeight: {
-        let headerH = s(36) + s(28) + s(8) + s(28);
+        let headerH = s(36) + s(28); // tab switch removed
         if (currentTabIndex === 2) {
             let totalRows = Math.ceil(emojiModel.count / 5);
             if (totalRows <= 0) {
@@ -421,11 +422,14 @@ PanelWindow {
                                 isDir: p.isDir
                             });
                         }
-                        if (launcherWindow.currentTabIndex === 1) {
-                            launcherWindow.applyModelItems(items);
+                        // merge into the unified list (top 5, only if still current)
+                        if (launcherWindow.fileSearchQuery === launcherWindow.unifiedQuery) {
+                            launcherWindow.unifiedFiles = items.slice(0, 5);
+                            launcherWindow.composeUnified();
                         }
-                    } else if (launcherWindow.currentTabIndex === 1) {
-                        launcherWindow.applyModelItems([]);
+                    } else if (launcherWindow.fileSearchQuery === launcherWindow.unifiedQuery) {
+                        launcherWindow.unifiedFiles = [];
+                        launcherWindow.composeUnified();
                     }
                 } catch(e) {}
             }
@@ -825,6 +829,7 @@ PanelWindow {
         if (fileSearchProcess.running) {
             fileSearchProcess.running = false;
         }
+        launcherWindow.fileSearchQuery = query ? query.trim() : "";
         fileSearchProcess.command = ["serpantinum-core", "launcher", "files", query ? query.trim() : ""];
         fileSearchProcess.running = true;
     }
@@ -886,108 +891,105 @@ PanelWindow {
         }
     }
 
+    // unified search: apps + files + emoji + commands in one list
+    property var unifiedStrong: []   // calc + apps whose name matches
+    property var unifiedWeak: []     // apps matched only by description/keywords/fuzzy
+    property var unifiedFiles: []
+    property var unifiedEmoji: []
+    property string unifiedQuery: ""
+    property string fileSearchQuery: ""
+
+    function makeItem(o) {
+        let base = {
+            name: "", description: "", desktop_id: "", icon: "", fontIcon: "", score: 0,
+            isCommand: false, command: "", isCalc: false, isSearch: false, searchUrl: "",
+            calcResult: "", isWidget: false, widgetTarget: "", isFile: false, filePath: "", isDir: false
+        };
+        for (let k in o) base[k] = o[k];
+        return base;
+    }
+
+    function resetUnified() {
+        unifiedStrong = []; unifiedWeak = []; unifiedFiles = []; unifiedEmoji = [];
+        unifiedQuery = "";
+        if (fileSearchProcess.running) fileSearchProcess.running = false;
+    }
+
+    function composeUnified() {
+        let q = unifiedQuery;
+        let pathMode = q.startsWith("/") || q.startsWith("~");
+        let out = pathMode
+            ? [].concat(unifiedFiles, unifiedStrong)
+            : [].concat(unifiedStrong, unifiedFiles);
+        out = out.concat(unifiedEmoji, unifiedWeak);
+        if (q.length > 0) {
+            out.push(makeItem({
+                name: "Run: " + q,
+                description: "Run in background  ·  start with >> to open in a terminal",
+                fontIcon: "󰆍",
+                isCommand: true,
+                command: q
+            }));
+        }
+        applyModelItems(out);
+    }
+
     function executeFilter(query) {
         launcherWindow.isKeyboardNav = false;
         if (keyboardNavTimer.running) keyboardNavTimer.stop();
 
         let rawTrimmed = query.trim();
-        let q = query.toLowerCase().trim();
-        let filtered = [];
+        let q = rawTrimmed.toLowerCase();
 
+        // > cmd  = run in background,  >> cmd = run in terminal (stays open)
         if (rawTrimmed.startsWith(">")) {
-            let cmd = rawTrimmed.substring(1).trim();
-            if (cmd.length > 0) {
-                filtered.push({
-                    name: "> " + cmd,
-                    description: typeof I18n !== "undefined" ? I18n.t("applauncher.command_run", { cmd: cmd }) : ("Execute command: " + cmd),
-                    desktop_id: "",
-                    icon: "",
-                    fontIcon: "󰆍",
-                    score: 10000000,
-                    isCommand: true,
-                    command: cmd,
-                    isCalc: false,
-                    isSearch: false,
-                    searchUrl: "",
-                    calcResult: "",
-                    isWidget: false,
-                    widgetTarget: "",
-                    isFile: false,
-                    filePath: "",
-                    isDir: false
-                });
-            } else {
-                filtered.push({
-                    name: "> ...",
-                    description: typeof I18n !== "undefined" ? I18n.t("applauncher.command_hint") : "Type a command to execute",
-                    desktop_id: "",
-                    icon: "",
-                    fontIcon: "󰆍",
-                    score: 10000000,
-                    isCommand: false,
-                    command: "",
-                    isCalc: false,
-                    isSearch: false,
-                    searchUrl: "",
-                    calcResult: "",
-                    isWidget: false,
-                    widgetTarget: "",
-                    isFile: false,
-                    filePath: "",
-                    isDir: false
-                });
-            }
-        }
-
-        if (rawTrimmed.startsWith("?")) {
-            let term = rawTrimmed.substring(1).trim();
-            let provider = SearchProviders.find(launcherWindow.searchProvider);
-            filtered.push({
-                name: term.length > 0 ? "? " + term : "? ...",
-                description: term.length > 0
-                    ? (typeof I18n !== "undefined" ? I18n.t("applauncher.search_run", { provider: provider.name }) : ("Search " + provider.name))
-                    : (typeof I18n !== "undefined" ? I18n.t("applauncher.search_hint", { provider: provider.name }) : "Type to search the web"),
-                desktop_id: "",
-                icon: "",
-                fontIcon: "󰖟",
+            resetUnified();
+            let inTerm = rawTrimmed.startsWith(">>");
+            let cmd = rawTrimmed.substring(inTerm ? 2 : 1).trim();
+            let prefix = inTerm ? ">> " : "> ";
+            applyModelItems([makeItem({
+                name: cmd.length > 0 ? prefix + cmd : prefix + "...",
+                description: cmd.length > 0
+                    ? (inTerm ? "Run in terminal (stays open)" : "Run in background")
+                    : (inTerm ? "Type a command to run in a terminal" : "Type a command  ·  >> opens a terminal"),
+                fontIcon: inTerm ? "" : "󰆍",
                 score: 10000000,
-                isCommand: false,
-                command: "",
-                isCalc: false,
-                isSearch: term.length > 0,
-                searchUrl: term.length > 0 ? SearchProviders.urlFor(launcherWindow.searchProvider, term) : "",
-                calcResult: "",
-                isWidget: false,
-                widgetTarget: "",
-                isFile: false,
-                filePath: "",
-                isDir: false
-            });
-            applyModelItems(filtered);
+                isCommand: cmd.length > 0,
+                command: cmd,
+                calcResult: inTerm ? "terminal" : ""
+            })]);
             return;
         }
 
+        // ? term = web search
+        if (rawTrimmed.startsWith("?")) {
+            resetUnified();
+            let term = rawTrimmed.substring(1).trim();
+            let provider = SearchProviders.find(launcherWindow.searchProvider);
+            applyModelItems([makeItem({
+                name: term.length > 0 ? "? " + term : "? ...",
+                description: term.length > 0 ? ("Search " + provider.name) : ("Type to search " + provider.name),
+                fontIcon: "󰖟",
+                score: 10000000,
+                isSearch: term.length > 0,
+                searchUrl: term.length > 0 ? SearchProviders.urlFor(launcherWindow.searchProvider, term) : ""
+            })]);
+            return;
+        }
+
+        let strong = [];
+        let weak = [];
+
         let mathResult = evaluateMath(rawTrimmed);
         if (mathResult !== null) {
-            filtered.push({
+            strong.push(makeItem({
                 name: rawTrimmed + " = " + mathResult,
-                description: typeof I18n !== "undefined" ? I18n.t("applauncher.calc_result") : "Calculation result (Enter to copy)",
-                desktop_id: "",
-                icon: "",
+                description: "Calculation result (Enter to copy)",
                 fontIcon: "󰃬",
                 score: 9000000,
-                isCommand: false,
-                command: "",
                 isCalc: true,
-                isSearch: false,
-                searchUrl: "",
-                calcResult: mathResult,
-                isWidget: false,
-                widgetTarget: "",
-                isFile: false,
-                filePath: "",
-                isDir: false
-            });
+                calcResult: mathResult
+            }));
         }
 
         for (let i = 0; i < allApps.length; i++) {
@@ -996,66 +998,73 @@ PanelWindow {
             let descLower = app.description ? app.description.toLowerCase() : "";
             let termsLower = app.searchTerms || "";
 
-            let matchQuality = 0;
-            let matches = false;
+            let matchQuality = -1;
+            if (q.length === 0) matchQuality = 0;
+            else if (nameLower === q) matchQuality = 100000;
+            else if (nameLower.startsWith(q)) matchQuality = 50000;
+            else if (nameLower.includes(q)) matchQuality = 10000;
+            else if (descLower.includes(q)) matchQuality = 5000;
+            else if (termsLower.includes(q)) matchQuality = 3000;
+            else if (isSubsequence(q, nameLower)) matchQuality = 1000;
+            if (matchQuality < 0) continue;
 
-            if (q.length === 0) {
-                matches = true;
-            } else if (!rawTrimmed.startsWith(">")) {
-                if (nameLower === q) {
-                    matchQuality = 100000;
-                    matches = true;
-                } else if (nameLower.startsWith(q)) {
-                    matchQuality = 50000;
-                    matches = true;
-                } else if (nameLower.includes(q)) {
-                    matchQuality = 10000;
-                    matches = true;
-                } else if (descLower.includes(q)) {
-                    matchQuality = 5000;
-                    matches = true;
-                } else if (termsLower.includes(q)) {
-                    matchQuality = 3000;
-                    matches = true;
-                } else if (isSubsequence(q, nameLower)) {
-                    matchQuality = 1000;
-                    matches = true;
-                }
-            }
-
-            if (matches) {
-                filtered.push({
-                    name: app.name,
-                    description: app.description,
-                    desktop_id: app.desktop_id,
-                    icon: app.icon,
-                    fontIcon: app.fontIcon || "",
-                    score: app.score + matchQuality,
-                    isCommand: false,
-                    command: "",
-                    isCalc: false,
-                    isSearch: false,
-                    searchUrl: "",
-                    calcResult: "",
-                    isWidget: app.isWidget || false,
-                    widgetTarget: app.widgetTarget || "",
-                    isFile: false,
-                    filePath: "",
-                    isDir: false
-                });
-            }
-        }
-
-        if (q.length > 0) {
-            filtered.sort(function(a, b) {
-                if (a.score !== b.score) {
-                    return b.score - a.score;
-                }
-                return a.name.localeCompare(b.name);
+            let it = makeItem({
+                name: app.name,
+                description: app.description,
+                desktop_id: app.desktop_id,
+                icon: app.icon,
+                fontIcon: app.fontIcon || "",
+                score: app.score + matchQuality,
+                isWidget: app.isWidget || false,
+                widgetTarget: app.widgetTarget || ""
             });
+            if (q.length === 0 || matchQuality >= 10000) strong.push(it);
+            else weak.push(it);
         }
 
-        applyModelItems(filtered);
+        let byScore = function(a, b) {
+            if (a.score !== b.score) return b.score - a.score;
+            return a.name.localeCompare(b.name);
+        };
+        if (q.length > 0) {
+            strong.sort(byScore);
+            weak.sort(byScore);
+        }
+
+        // Empty query: just the apps, like before
+        if (q.length === 0) {
+            resetUnified();
+            applyModelItems(strong);
+            return;
+        }
+
+        unifiedQuery = rawTrimmed;
+        unifiedStrong = strong;
+        unifiedWeak = weak.slice(0, 5);
+
+        if (q.length >= 2) {
+            // Emoji (top 4): Enter copies, same path as calculator results
+            let es = ensureEmojiSearch();
+            let emojis = es ? es.search(rawTrimmed, 4) : [];
+            unifiedEmoji = emojis.map(function(e) {
+                return makeItem({
+                    name: e.name,
+                    description: "Emoji  ·  Enter to copy",
+                    fontIcon: e.emoji,
+                    isCalc: true,
+                    calcResult: e.emoji
+                });
+            });
+            // Keep previous file hits that still match while the new search runs (no flicker)
+            unifiedFiles = unifiedFiles.filter(function(f) { return f.name.toLowerCase().includes(q); });
+            executeFileSearch(rawTrimmed);
+        } else {
+            unifiedEmoji = [];
+            unifiedFiles = [];
+            if (fileSearchProcess.running) fileSearchProcess.running = false;
+        }
+
+        composeUnified();
     }
 
     function activateIndex(index) {
@@ -1094,10 +1103,18 @@ PanelWindow {
         }
 
         if (item.isCommand) {
+            // ">>" runs in a terminal that stays open; everything else runs in the background
             if (item.command && item.command.trim().length > 0) {
-                let term = launcherWindow.terminalCommand ? launcherWindow.terminalCommand.trim() : "";
-                let fullCmd = term !== "" ? (term + " " + item.command) : item.command;
-                Quickshell.execDetached(["bash", "-c", fullCmd]);
+                if (item.calcResult === "terminal") {
+                    let term = launcherWindow.terminalCommand ? launcherWindow.terminalCommand.trim() : "";
+                    if (term === "") term = "kitty -e";
+                    let wrapped = item.command + '; echo; read -n 1 -s -r -p "[done, press any key to close]"';
+                    Quickshell.execDetached(["bash", "-c", term + ' bash -c "$1"', "_", wrapped]);
+                } else {
+                    Quickshell.execDetached(["bash", "-c",
+                        '(' + item.command + ') >/dev/null 2>&1 || notify-send -a Launcher "Command failed" "$1"',
+                        "_", item.command]);
+                }
             }
             closeLauncher();
             return;
@@ -1305,7 +1322,7 @@ PanelWindow {
                         } else if (launcherWindow.currentTabIndex === 2) {
                             return typeof I18n !== "undefined" ? I18n.t("applauncher.placeholder_emojis", "Search emojis by name or keyword...") : "Search emojis by name or keyword...";
                         }
-                        return typeof I18n !== "undefined" ? I18n.t("applauncher.placeholder", "Start with > for a command...") : "Start with > for a command...";
+                        return "Apps, files, emoji, math…   > run   >> terminal   ? web";
                     }
                     showClearButton: true
 
@@ -1338,14 +1355,13 @@ PanelWindow {
                         }
                     }
 
+                    // no tabs any more: Tab / Shift+Tab move through the list
                     Keys.onTabPressed: function(event) {
-                        launcherWindow.currentTabIndex = (launcherWindow.currentTabIndex + 1) % 3;
-                        tabSwitch.currentIndex = launcherWindow.currentTabIndex;
+                        if (appList.currentIndex < appModel.count - 1) appList.currentIndex++;
                         event.accepted = true;
                     }
                     Keys.onBacktabPressed: function(event) {
-                        launcherWindow.currentTabIndex = (launcherWindow.currentTabIndex + 2) % 3;
-                        tabSwitch.currentIndex = launcherWindow.currentTabIndex;
+                        if (appList.currentIndex > 0) appList.currentIndex--;
                         event.accepted = true;
                     }
                     Keys.onDownPressed: function(event) {
@@ -1414,6 +1430,7 @@ PanelWindow {
 
                 Switch {
                     id: tabSwitch
+                    visible: false // tabs removed
                     z: 10
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -1443,9 +1460,10 @@ PanelWindow {
                     z: 1
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    y: contentContainer.isSearchAtBottom ? 0 : (tabSwitch.y + tabSwitch.height + launcherWindow.s(8))
+                    // list sits right under (or above) the search box now
+                    y: contentContainer.isSearchAtBottom ? 0 : (searchInput.y + searchInput.height + launcherWindow.s(8))
                     height: contentContainer.isSearchAtBottom
-                            ? Math.max(0, tabSwitch.y - launcherWindow.s(8))
+                            ? Math.max(0, searchInput.y - launcherWindow.s(8))
                             : Math.max(0, parent.height - y)
                     clip: true
 
@@ -1815,7 +1833,13 @@ PanelWindow {
                                                     if (model.isCommand) return "󰆍";
                                                     return "󰵆";
                                                 }
-                                                font.family: ThemeBackend.fontFamily
+                                                // nerd glyphs (private-use codepoints) use Serpantinum's bundled
+                                                // Symbols Nerd Font Mono so they sit centered; emoji keep the normal font
+                                                readonly property bool isSymbolGlyph: {
+                                                    let cp = text.length > 0 ? text.codePointAt(0) : 0;
+                                                    return (cp >= 0xE000 && cp <= 0xF8FF) || cp >= 0xF0000;
+                                                }
+                                                font.family: (isSymbolGlyph && ThemeBackend.iconFontReady) ? ThemeBackend.iconFont : ThemeBackend.fontFamily
                                                 font.pixelSize: launcherWindow.s(16)
                                                 color: delegateRoot.isSelected ? ThemeBackend.mauve : ThemeBackend.subtext0
                                                 verticalAlignment: Text.AlignVCenter
