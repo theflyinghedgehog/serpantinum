@@ -985,6 +985,18 @@ QtObject {
                 "default": { file: "faces/updates/UpdatesFace.qml", icon: "1", label: "Default" }
             }
         },
+        // Git repos widget
+        "gitrepos": {
+            name: "Git repos",
+            icon: String.fromCodePoint(0xF02A2),
+            category: "system",
+            defaultWidth: 240,
+            defaultHeight: 90,
+            defaultVariant: "default",
+            variants: {
+                "default": { file: "faces/gitrepos/GitReposFace.qml", icon: "1", label: "Default" }
+            }
+        },
         // Obsidian widget
         "obsidian": {
             name: "Obsidian",

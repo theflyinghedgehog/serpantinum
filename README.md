@@ -24,7 +24,8 @@ Apps, files, emoji and calculator results are in one ranked list instead of tabs
 
 ### Widgets
 
-- Arch updates: pending repo and AUR updates. Update everything, or tick the packages you want. Updates run in kitty.
+- Arch updates: pending repo and AUR updates. Update everything, or tick the packages you want. The widget asks for the sudo password itself and shows a progress bar, with the full log in the dropdown. No terminal.
+- Git repos: how many repos under `~/Code` have uncommitted changes or unpushed commits, and which. Tick repos to commit and push them from the widget; it asks for the commit message in the face. Folders are set in `~/.config/serpantinum/gitrepos.conf`.
 - Obsidian: search the vault, create a note, open bookmarks. Folders open inside the widget.
 - Google agenda: events for the next 7 days and open tasks. Click the circle to complete a task, + to add one. Uses a small standard-library Python helper (`gsync.py`). You need your own OAuth "Desktop app" client from Google Cloud saved as `~/.config/serpantinum/google/client_secret.json`.
 - Battery "Devices" style: laptop and Bluetooth device batteries as rings or a list, with one ring per battery on the T470.

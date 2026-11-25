@@ -26,5 +26,6 @@ WeatherFaceCompact 1.0 weather/WeatherFaceCompact.qml
 WeatherFaceFull 1.0 weather/WeatherFaceFull.qml
 WeatherFaceRound 1.0 weather/WeatherFaceRound.qml
 UpdatesFace 1.0 updates/UpdatesFace.qml
+GitReposFace 1.0 gitrepos/GitReposFace.qml
 ObsidianFace 1.0 obsidian/ObsidianFace.qml
 GoogleFace 1.0 google/GoogleFace.qml
